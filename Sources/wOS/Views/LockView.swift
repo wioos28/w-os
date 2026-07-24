@@ -34,8 +34,8 @@ struct LockView: View {
                     HStack(spacing: 12) {
                         ForEach(0..<4, id: \.self) { i in
                             Circle()
-                                .fill(pin.count > i ? Color.white : Color.clear)
                                 .stroke(Color.white.opacity(0.6), lineWidth: 1.5)
+                                .background(Circle().fill(pin.count > i ? Color.white : Color.clear))
                                 .frame(width: 12, height: 12)
                         }
                     }
