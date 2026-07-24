@@ -39,13 +39,23 @@ workflows:
       - name: Generate Xcode project
         script: |
           xcodegen generate
-      - name: Build for Device
+      - name: Set up signing
         script: |
-          xcodebuild build \
+          echo "Checking for signing certificate..."
+      - name: Build and archive
+        script: |
+          xcodebuild archive \
             -project WOS.xcodeproj \
             -scheme WOS \
             -destination 'generic/platform=iOS' \
             -configuration Release \
-            CODE_SIGNING_ALLOWED=NO
+            -archivePath build/WOS.xcarchive \
+            CODE_SIGNING_ALLOWED=YES
+      - name: Export IPA
+        script: |
+          xcodebuild -exportArchive \
+            -archivePath build/WOS.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath build/ipa
     artifacts:
-      - build/Products/Release-iphoneos/*.ipa
+      - build/ipa/*.ipa
