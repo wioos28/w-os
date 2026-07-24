@@ -8,12 +8,11 @@
     <false/>
     <key>thinning</key>
     <string>&lt;none&gt;</string>
+    <key>uploadBitcode</key>
+    <false/>
+    <key>uploadSymbols</key>
+    <true/>
     <key>signingStyle</key>
-    <string>manual</string>
-    <key>provisioningProfiles</key>
-    <dict>
-        <key>com.wos.app</key>
-        <string>*</string>
-    </dict>
+    <string>automatic</string>
 </dict>
 </plist>

@@ -1,4 +1,7 @@
 workflows:
+  # ====================================================
+  # Workflow 1: Build Simulator (chỉ tạo .app, không có .ipa)
+  # ====================================================
   ios-simulator-build:
     name: iOS Simulator Build
     max_build_duration: 60
@@ -25,8 +28,13 @@ workflows:
     artifacts:
       - build/Products/Debug-iphonesimulator/*.app
 
+  # ====================================================
+  # Workflow 2: Build Device + Export IPA
+  # Yêu cầu: Cấu hình signing trong Codemagic UI
+  #   Settings → Code signing → Upload certificate + profile
+  # ====================================================
   ios-device-release:
-    name: iOS Device Release
+    name: iOS Device Release (IPA)
     max_build_duration: 120
     environment:
       vars:
@@ -40,35 +48,50 @@ workflows:
       - name: Generate Xcode project
         script: |
           xcodegen generate
-      - name: Clean build folder
+      - name: Clean
         script: |
           set -e
-          rm -rf build/
+          rm -rf build/ derived_data/
           mkdir -p build/ipa
-      - name: Archive for device
+      - name: Archive
         script: |
           set -e
-          echo "=== Archiving WOS for iOS Device ==="
+          echo "=== Step 1: Archive ==="
           xcodebuild archive \
             -project WOS.xcodeproj \
             -scheme WOS \
             -destination 'generic/platform=iOS' \
             -configuration Release \
+            -derivedDataPath derived_data \
             -archivePath build/WOS.xcarchive \
-            CODE_SIGN_IDENTITY="-" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
-          echo "=== Archive completed ==="
+            | xcpretty
+          echo "=== Archive done ==="
           ls -la build/WOS.xcarchive
       - name: Export IPA
         script: |
           set -e
-          echo "=== Exporting IPA ==="
+          echo "=== Step 2: Export IPA ==="
           xcodebuild -exportArchive \
             -archivePath build/WOS.xcarchive \
             -exportOptionsPlist ExportOptions.plist \
-            -exportPath build/ipa
-          echo "=== Export completed ==="
-          ls -la build/ipa/
+            -exportPath build/ipa \
+            | xcpretty
+          echo "=== Export done ==="
+          echo "Files in build/ipa:"
+          find build/ipa -type f -name "*.ipa" -o -name "*.plist" | head -20
+      - name: Verify IPA exists
+        script: |
+          set -e
+          IPA_COUNT=$(find build/ipa -name "*.ipa" 2>/dev/null | wc -l | tr -d ' ')
+          echo "Found $IPA_COUNT IPA file(s)"
+          if [ "$IPA_COUNT" -eq 0 ]; then
+            echo "WARNING: No IPA generated. Listing all files:"
+            find build/ -type f | head -50
+          else
+            echo "IPA files:"
+            find build/ipa -name "*.ipa" -exec ls -lh {} \;
+          fi
     artifacts:
-      - build/ipa/*.ipa
+      - build/ipa/**/*.ipa
+      - build/ipa/**/*.plist
+      - build/WOS.xcarchive

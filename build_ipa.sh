@@ -29,7 +29,7 @@ xcodegen generate
 # Bước 2: Clean
 echo ""
 echo "🧹 [2/5] Cleaning build folder..."
-rm -rf build/
+rm -rf build/ derived_data/
 mkdir -p build/ipa
 
 # Bước 3: Archive
@@ -40,10 +40,8 @@ xcodebuild archive \
     -scheme "$SCHEME" \
     -destination 'generic/platform=iOS' \
     -configuration Release \
-    -archivePath "$ARCHIVE_PATH" \
-    CODE_SIGN_IDENTITY="-" \
-    CODE_SIGNING_REQUIRED=NO \
-    CODE_SIGNING_ALLOWED=NO
+    -derivedDataPath derived_data \
+    -archivePath "$ARCHIVE_PATH"
 
 echo "✅ Archive completed: $ARCHIVE_PATH"
 
@@ -59,18 +57,25 @@ xcodebuild -exportArchive \
 echo ""
 echo "📋 [5/5] Build results:"
 echo "===================="
-if ls "$EXPORT_PATH"/*.ipa 1> /dev/null 2>&1; then
-    echo "✅ IPA files:"
-    ls -lh "$EXPORT_PATH"/*.ipa
+IPA_COUNT=$(find "$EXPORT_PATH" -name "*.ipa" 2>/dev/null | wc -l | tr -d ' ')
+
+if [ "$IPA_COUNT" -gt 0 ]; then
+    echo "✅ IPA files found:"
+    find "$EXPORT_PATH" -name "*.ipa" -exec ls -lh {} \;
     echo ""
     echo "📁 Location: $(pwd)/$EXPORT_PATH/"
 else
-    echo "❌ No IPA generated. Check signing configuration."
+    echo "❌ No IPA generated."
     echo ""
-    echo "⚠️  To fix signing, edit ExportOptions.plist:"
-    echo "   - Change method to 'app-store' or 'ad-hoc'"
-    echo "   - Add your provisioningProfiles with actual profile names"
-    echo "   - Or use Xcode automatic signing"
+    echo "Debug info:"
+    echo "  - Archive exists: $(ls -la "$ARCHIVE_PATH" 2>/dev/null || echo 'NO')"
+    echo "  - Export folder contents:"
+    find "$EXPORT_PATH" -type f 2>/dev/null || echo "    (empty)"
+    echo ""
+    echo "⚠️  Possible fixes:"
+    echo "   1. Check signing: open Xcode → Preferences → Accounts"
+    echo "   2. Or edit ExportOptions.plist with your provisioning profile name"
+    echo "   3. Or use: method = 'ad-hoc' with manual signing"
 fi
 
 echo ""
