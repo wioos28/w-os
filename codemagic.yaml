@@ -14,7 +14,8 @@ workflows:
           xcodegen generate
       - name: Build for Simulator
         script: |
-          xcodebuild build \
+          set -e
+          xcodebuild clean build \
             -project WOS.xcodeproj \
             -scheme WOS \
             -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
@@ -26,7 +27,7 @@ workflows:
 
   ios-device-release:
     name: iOS Device Release
-    max_build_duration: 90
+    max_build_duration: 120
     environment:
       vars:
         XCODE_VERSION: "15.2"
@@ -39,23 +40,35 @@ workflows:
       - name: Generate Xcode project
         script: |
           xcodegen generate
-      - name: Set up signing
+      - name: Clean build folder
         script: |
-          echo "Checking for signing certificate..."
-      - name: Build and archive
+          set -e
+          rm -rf build/
+          mkdir -p build/ipa
+      - name: Archive for device
         script: |
+          set -e
+          echo "=== Archiving WOS for iOS Device ==="
           xcodebuild archive \
             -project WOS.xcodeproj \
             -scheme WOS \
             -destination 'generic/platform=iOS' \
             -configuration Release \
             -archivePath build/WOS.xcarchive \
-            CODE_SIGNING_ALLOWED=YES
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+          echo "=== Archive completed ==="
+          ls -la build/WOS.xcarchive
       - name: Export IPA
         script: |
+          set -e
+          echo "=== Exporting IPA ==="
           xcodebuild -exportArchive \
             -archivePath build/WOS.xcarchive \
             -exportOptionsPlist ExportOptions.plist \
             -exportPath build/ipa
+          echo "=== Export completed ==="
+          ls -la build/ipa/
     artifacts:
       - build/ipa/*.ipa
