@@ -23,28 +23,6 @@ workflows:
           rm -rf build/ derived_data/
           mkdir -p build/ipa
 
-      - name: Generate ExportOptions.plist
-        script: |
-          set -e
-          cat > ExportOptions.plist << 'PLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>method</key>
-              <string>development</string>
-              <key>compileBitcode</key>
-              <false/>
-              <key>thinning</key>
-              <string>&lt;none&gt;</string>
-              <key>signingStyle</key>
-              <string>automatic</string>
-          </dict>
-          </plist>
-          PLIST
-          echo "ExportOptions.plist created:"
-          cat ExportOptions.plist
-
       - name: Archive for iOS Device
         script: |
           set -e
@@ -62,17 +40,17 @@ workflows:
           echo "=== Archive done ==="
           ls -la build/WOS.xcarchive
 
-      - name: Export IPA
+      - name: Export Unsigned IPA (Bypass Xcode Export)
         script: |
           set -e
-          echo "=== Step 2: Export IPA ==="
-          xcodebuild -exportArchive \
-            -archivePath build/WOS.xcarchive \
-            -exportOptionsPlist ExportOptions.plist \
-            -exportPath build/ipa \
-            -allowProvisioningUpdates
+          echo "=== Step 2: Manually Package IPA ==="
+          mkdir -p build/ipa/Payload
+          cp -r build/WOS.xcarchive/Products/Applications/*.app build/ipa/Payload/
+          cd build/ipa
+          zip -qr WOS_unsigned.ipa Payload
+          rm -rf Payload
           echo "=== Export done ==="
-          find build/ipa -type f
+          ls -la
 
       - name: Verify IPA
         script: |
