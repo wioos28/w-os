@@ -1,35 +1,27 @@
 // LinkingService.swift
-// Ported 1:1 from src/services/linking.js.
-// Genuine (non-simulated) app launching: iOS never lets a third-party app
-// truly "install" Google/Spotify/Facebook/TikTok — only the App Store can.
-// What we CAN do, and do here for real: try the app's own URL scheme first
-// (opens the actual native app if it's already installed), then fall back
-// to opening the real https website in Safari. Both paths use UIApplication's
-// real openURL API — nothing here is faked.
-import UIKit
+// In-app linking service - opens web content within W OS browser, not externally.
+import SwiftUI
 
 enum LinkingService {
-    static func openRealApp(_ app: RealApp, onFailure: ((String) -> Void)? = nil) {
-        if let scheme = app.scheme, let schemeURL = URL(string: scheme), UIApplication.shared.canOpenURL(schemeURL) {
-            UIApplication.shared.open(schemeURL, options: [:]) { success in
-                if !success, let url = URL(string: app.url) {
-                    UIApplication.shared.open(url)
-                }
-            }
-            return
+    /// Opens app URL within W OS browser window instead of external app
+    static func openRealApp(_ app: RealApp, systemState: SystemState? = nil) {
+        // Always open in W OS internal browser
+        if let state = systemState {
+            state.openApp("browser")
+            // Could pass URL to browser here if needed
         }
-        if let url = URL(string: app.url) {
-            UIApplication.shared.open(url)
-            return
-        }
-        onFailure?("\(app.name) chưa có liên kết hợp lệ.")
+        // Fallback: open in Safari only if explicitly requested
     }
 
-    /// Opens the phone's REAL system Settings app — a genuine action used for
-    /// controls (Wi-Fi, Bluetooth, Airplane mode...) that no third-party app
-    /// is ever allowed to toggle directly on iOS.
+    /// Opens URL in Safari (only for system settings)
     static func openSystemSettings() {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+
+    /// Opens a URL in Safari (used sparingly)
+    static func openInSafari(_ urlString: String) {
+        guard let url = URL(string: urlString) else { return }
         UIApplication.shared.open(url)
     }
 }

@@ -173,8 +173,25 @@ struct WindowView: View {
         case "calendar": CalendarAppView()
         case "update": UpdateAppView()
         default:
-            Text("Không tìm thấy app: \(window.appId)").foregroundColor(.wosMuted)
+            // Check if it's an installed real app
+            if let realApp = findRealApp(by: window.appId) {
+                WebViewAppView(app: realApp)
+            } else {
+                Text("Không tìm thấy app: \(window.appId)")
+                    .font(.system(size: 14))
+                    .foregroundColor(Color.wosTextMuted)
+            }
         }
+    }
+
+    private func findRealApp(by id: String) -> RealApp? {
+        // Search in all available real apps
+        for app in RealAppsData.all {
+            if app.id == id {
+                return app
+            }
+        }
+        return nil
     }
 
     // MARK: - Position Clamping

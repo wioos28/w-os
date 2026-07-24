@@ -13,6 +13,5 @@ struct wOSApp: App {
                 .preferredColorScheme(.dark)
                 .ignoresSafeArea()
         }
-        .windowStyle(.plain)
     }
 }

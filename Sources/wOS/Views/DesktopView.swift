@@ -30,13 +30,13 @@ struct DesktopView: View {
                                 .onTapGesture { systemState.openApp(app.id) }
                         }
 
-                        // Installed apps
+                        // Installed apps - open within W OS
                         ForEach(systemState.installedApps) { app in
                             appIconView(title: app.name, icon: app.icon, color: app.color, isReal: true, isLandscape: isLandscape)
                                 .opacity(hasAppeared ? 1 : 0)
                                 .offset(y: hasAppeared ? 0 : 20)
                                 .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.5), value: hasAppeared)
-                                .onTapGesture { LinkingService.openRealApp(app) }
+                                .onTapGesture { systemState.openApp(app.id) }
                                 .onLongPressGesture { appToDelete = app }
                         }
                     }
