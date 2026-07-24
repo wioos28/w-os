@@ -1,14 +1,16 @@
 // CalendarAppView.swift
-// Ported 1:1 from src/screens/CalendarScreen.js — month grid with prev/next navigation.
+// Beautiful calendar with month navigation and event cards.
 import SwiftUI
 
 struct CalendarAppView: View {
     private let dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"]
-    private let monthNames = ["Tháng 1","Tháng 2","Tháng 3","Tháng 4","Tháng 5","Tháng 6","Tháng 7","Tháng 8","Tháng 9","Tháng 10","Tháng 11","Tháng 12"]
+    private let monthNames = ["Tháng 1","Tháng 2","Tháng 3","Tháng 4","Tháng 5","Tháng 6",
+                              "Tháng 7","Tháng 8","Tháng 9","Tháng 10","Tháng 11","Tháng 12"]
 
     @State private var month: Int
     @State private var year: Int
     @State private var selectedDay: Int
+    @State private var appears = false
 
     private let today = Calendar.current.dateComponents([.year, .month, .day], from: Date())
 
@@ -20,8 +22,7 @@ struct CalendarAppView: View {
     }
 
     private var daysInMonth: Int {
-        let range = Calendar.current.range(of: .day, in: .month, for: dateFor(day: 1))!
-        return range.count
+        Calendar.current.range(of: .day, in: .month, for: dateFor(day: 1))?.count ?? 30
     }
 
     private var firstWeekday: Int {
@@ -29,7 +30,10 @@ struct CalendarAppView: View {
     }
 
     private func dateFor(day: Int) -> Date {
-        var comps = DateComponents(); comps.year = year; comps.month = month + 1; comps.day = day
+        var comps = DateComponents()
+        comps.year = year
+        comps.month = month + 1
+        comps.day = day
         return Calendar.current.date(from: comps) ?? Date()
     }
 
@@ -46,66 +50,175 @@ struct CalendarAppView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Button(action: prevMonth) { Image(systemName: "chevron.left").font(.system(size: 20)).foregroundColor(.wosAccent) }
-                Spacer()
-                Text("\(monthNames[month]) \(year)").font(.system(size: 17, weight: .semibold)).foregroundColor(.white)
-                Spacer()
-                Button(action: nextMonth) { Image(systemName: "chevron.right").font(.system(size: 20)).foregroundColor(.wosAccent) }
-            }
-            .padding(16)
+            // Header with month navigation
+            header
 
-            HStack {
-                ForEach(dayNames, id: \.self) { d in
-                    Text(d).font(.system(size: 12)).foregroundColor(Color(hex: "666666")).frame(maxWidth: .infinity)
-                }
-            }
-            .padding(.bottom, 8)
-            .overlay(Divider().background(Color(hex: "1a1a1a")), alignment: .bottom)
+            // Day names row
+            dayNamesRow
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 6) {
-                ForEach(Array(cells.enumerated()), id: \.offset) { _, day in
-                    if let day {
-                        Text("\(day)")
-                            .font(.system(size: 14, weight: day == selectedDay ? .semibold : .regular))
-                            .foregroundColor(day == selectedDay ? .white : (isToday(day) ? .wosAccent : Color(hex: "cccccc")))
-                            .frame(width: 36, height: 36)
-                            .background(day == selectedDay ? Color.wosAccent : .clear)
-                            .overlay(Circle().stroke(isToday(day) && day != selectedDay ? Color.wosAccent : .clear))
-                            .clipShape(Circle())
-                            .onTapGesture { selectedDay = day }
-                    } else {
-                        Color.clear.frame(width: 36, height: 36)
-                    }
-                }
-            }
-            .padding(8)
+            // Calendar grid
+            calendarGrid
 
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Sự kiện \(selectedDay)/\(month + 1)/\(year)").font(.system(size: 14, weight: .semibold)).foregroundColor(.white)
-                HStack(spacing: 10) {
-                    Circle().fill(Color.wosAccent).frame(width: 8, height: 8)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Không có sự kiện").font(.system(size: 14)).foregroundColor(Color(hex: "888888"))
-                        Text("Nhấn để thêm sự kiện mới").font(.system(size: 12)).foregroundColor(Color(hex: "555555"))
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .background(Color(hex: "111111"))
-            .cornerRadius(16)
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(hex: "1a1a1a")))
-            .padding(12)
+            // Selected day info
+            selectedDayCard
+
             Spacer()
         }
         .background(Color.wosBackground)
+        .onAppear {
+            withAnimation(.spring(response: 0.5)) { appears = true }
+        }
     }
+
+    // MARK: - Header
+
+    private var header: some View {
+        HStack {
+            Button(action: { withAnimation { prevMonth() } }) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.wosAccent)
+                    .frame(width: 36, height: 36)
+                    .background(Color.wosPanelAlt)
+                    .clipShape(Circle())
+            }
+
+            Spacer()
+
+            VStack(spacing: 4) {
+                Text(monthNames[month])
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                Text("\(year)")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(Color.wosTextSecondary)
+            }
+
+            Spacer()
+
+            Button(action: { withAnimation { nextMonth() } }) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.wosAccent)
+                    .frame(width: 36, height: 36)
+                    .background(Color.wosPanelAlt)
+                    .clipShape(Circle())
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+    }
+
+    // MARK: - Day Names
+
+    private var dayNamesRow: some View {
+        HStack {
+            ForEach(dayNames, id: \.self) { d in
+                Text(d)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color.wosTextMuted)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.bottom, 8)
+    }
+
+    // MARK: - Calendar Grid
+
+    private var calendarGrid: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 4) {
+            ForEach(Array(cells.enumerated()), id: \.offset) { _, day in
+                if let day {
+                    dayCell(day)
+                } else {
+                    Color.clear.frame(height: 44)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+    }
+
+    private func dayCell(_ day: Int) -> some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.2)) { selectedDay = day }
+        }) {
+            VStack(spacing: 2) {
+                Text("\(day)")
+                    .font(.system(size: 15, weight: day == selectedDay ? .bold : .regular, design: .rounded))
+                    .foregroundColor(dayTextColor(day))
+
+                if isToday(day) && day != selectedDay {
+                    Circle()
+                        .fill(Color.wosAccent)
+                        .frame(width: 4, height: 4)
+                }
+            }
+            .frame(width: 40, height: 40)
+            .background(dayBackgroundColor(day))
+            .clipShape(Circle())
+        }
+    }
+
+    private func dayTextColor(_ day: Int) -> Color {
+        if day == selectedDay { return .white }
+        if isToday(day) { return .wosAccent }
+        return Color.wosTextPrimary
+    }
+
+    private func dayBackgroundColor(_ day: Int) -> Color {
+        if day == selectedDay { return Color.wosAccent }
+        return Color.clear
+    }
+
+    // MARK: - Selected Day Card
+
+    private var selectedDayCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "calendar")
+                    .font(.system(size: 16))
+                    .foregroundColor(.wosAccent)
+                Text("Sự kiện ngày \(selectedDay)/\(month + 1)/\(year)")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+
+            HStack(spacing: 12) {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.wosAccent.opacity(0.15))
+                    .frame(width: 4, height: 40)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Không có sự kiện")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(Color.wosTextSecondary)
+                    Text("Nhấn để thêm sự kiện mới")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color.wosTextDisabled)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.wosPanel)
+        .cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.wosBorder))
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+    }
+
+    // MARK: - Navigation
 
     private func prevMonth() {
         if month == 0 { month = 11; year -= 1 } else { month -= 1 }
     }
+
     private func nextMonth() {
         if month == 11 { month = 0; year += 1 } else { month += 1 }
     }
+}
+
+#Preview {
+    CalendarAppView()
 }
