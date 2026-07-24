@@ -1,5 +1,5 @@
 // wOSApp.swift
-// Ported from App.js — the root of the whole simulated OS.
+// Root of W OS - forces landscape orientation for desktop experience.
 import SwiftUI
 
 @main
@@ -11,6 +11,8 @@ struct wOSApp: App {
             ContentView()
                 .environmentObject(systemState)
                 .preferredColorScheme(.dark)
+                .ignoresSafeArea()
         }
+        .windowStyle(.plain)
     }
 }
