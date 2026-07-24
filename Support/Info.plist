@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>vi</string>
+	<key>CFBundleDisplayName</key>
+	<string>W OS</string>
+	<key>CFBundleShortVersionString</key>
+	<string>2.1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+	</dict>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<!-- Required so LinkingService.canOpenURL() can genuinely detect whether
+	     the real native app is installed before opening its URL scheme
+	     (see src/services/linking.js -> LinkingService.swift). -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>googlegmail</string>
+		<string>comgooglemaps</string>
+		<string>googledrive</string>
+		<string>youtube</string>
+		<string>spotify</string>
+		<string>nflx</string>
+		<string>fb</string>
+		<string>fb-messenger</string>
+		<string>instagram</string>
+		<string>tiktok</string>
+		<string>whatsapp</string>
+		<string>tg</string>
+		<string>zalo</string>
+		<string>twitter</string>
+		<string>discord</string>
+		<string>linkedin</string>
+		<string>reddit</string>
+	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+</dict>
+</plist>
