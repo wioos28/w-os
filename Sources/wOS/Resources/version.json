@@ -1,5 +1,5 @@
 {
-  "version": "2.2.0",
+  "version": "2.3.0",
   "buildDate": "2026-07-24",
   "minIOSVersion": "16.0",
   "features": [
@@ -22,15 +22,16 @@
     "Search with category filters",
     "Settings with PIN management",
     "Boot drive download from GitHub",
-    "Cloud sync service"
+    "Cloud sync service",
+    "Dynamic app catalog from GitHub",
+    "Separated OS core (WOSCore) from UI framework"
   ],
   "changelog": [
-    "Added OS download from GitHub on first launch",
-    "Added landscape layout with side dock",
-    "Added in-app WebView for installed apps",
-    "Improved all UI with glassmorphism",
-    "Added haptic feedback throughout",
-    "Fixed compilation errors for iOS 16+",
-    "Added version checking and updates"
+    "Separated WOSCore (OS logic) from WOSApp (UI framework)",
+    "WOSCore can be reused as standalone module",
+    "Added dynamic app catalog from GitHub (apps.json)",
+    "Fixed main screen horizontal scrolling",
+    "Fixed password crack animation bug",
+    "Version bump to 2.3.0"
   ]
 }

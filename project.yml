@@ -16,19 +16,37 @@ settings:
     ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
 
 targets:
+  WOSCore:
+    type: framework
+    platform: iOS
+    sources:
+      - path: Sources/WOSCore
+        type: group
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wos.core
+        PRODUCT_NAME: WOSCore
+        MARKETING_VERSION: "2.3.0"
+        CURRENT_PROJECT_VERSION: 1
+        CODE_SIGN_STYLE: Automatic
+        DEFINES_MODULE: YES
+        BUILD_LIBRARY_FOR_DISTRIBUTION: YES
+
   WOS:
     type: application
     platform: iOS
     sources:
-      - path: Sources/wOS
+      - path: Sources/WOSApp
         type: group
     resources:
       - path: Sources/wOS/Resources
+    dependencies:
+      - target: WOSCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.wos.app
         PRODUCT_NAME: W OS
-        MARKETING_VERSION: "2.1.0"
+        MARKETING_VERSION: "2.3.0"
         CURRENT_PROJECT_VERSION: 1
         CODE_SIGN_STYLE: Automatic
         INFOPLIST_FILE: Support/Info.plist
