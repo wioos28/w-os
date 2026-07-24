@@ -2,6 +2,7 @@ workflows:
   ios-release:
     name: iOS Release (IPA)
     max_build_duration: 120
+    instance_type: mac_mini_m1
     environment:
       vars:
         XCODE_VERSION: "15.2"
@@ -36,10 +37,6 @@ workflows:
               <false/>
               <key>thinning</key>
               <string>&lt;none&gt;</string>
-              <key>uploadBitcode</key>
-              <false/>
-              <key>uploadSymbols</key>
-              <true/>
               <key>signingStyle</key>
               <string>automatic</string>
           </dict>
@@ -59,10 +56,9 @@ workflows:
             -configuration Release \
             -derivedDataPath derived_data \
             -archivePath build/WOS.xcarchive \
-            CODE_SIGN_IDENTITY="-" \
-            CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            | xcpretty
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
           echo "=== Archive done ==="
           ls -la build/WOS.xcarchive
 
@@ -74,7 +70,7 @@ workflows:
             -archivePath build/WOS.xcarchive \
             -exportOptionsPlist ExportOptions.plist \
             -exportPath build/ipa \
-            | xcpretty
+            -allowProvisioningUpdates
           echo "=== Export done ==="
           find build/ipa -type f
 
@@ -90,11 +86,11 @@ workflows:
             find build/ipa -name "*.ipa" -exec ls -lh {} \;
           else
             echo "FAILED - No IPA generated."
-            echo "Listing all output files:"
-            find build/ -type f -name "*.ipa" -o -name "*.plist" -o -name "*.log" 2>/dev/null | head -30
+            find build/ -type f 2>/dev/null | head -30
           fi
 
     artifacts:
+      - build/ipa/*.ipa
       - build/ipa/**/*.ipa
-      - build/ipa/**/*.plist
+      - build/*.xcarchive
       - build/WOS.xcarchive
