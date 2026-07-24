@@ -1,0 +1,93 @@
+{
+  "version": "2.2.0",
+  "apps": [
+    {
+      "id": "settings",
+      "title": "Cài đặt",
+      "icon": "gearshape.fill",
+      "color": "#5b5f66",
+      "enabled": true,
+      "dock": true
+    },
+    {
+      "id": "browser",
+      "title": "Browser",
+      "icon": "globe",
+      "color": "#3b82f6",
+      "enabled": true,
+      "dock": true
+    },
+    {
+      "id": "appstore",
+      "title": "Thư viện",
+      "icon": "bag.fill",
+      "color": "#10b981",
+      "enabled": true,
+      "dock": true
+    },
+    {
+      "id": "terminal",
+      "title": "Terminal",
+      "icon": "terminal.fill",
+      "color": "#27272a",
+      "enabled": true,
+      "dock": true
+    },
+    {
+      "id": "files",
+      "title": "Tệp",
+      "icon": "folder.fill",
+      "color": "#f59e0b",
+      "enabled": true,
+      "dock": true
+    },
+    {
+      "id": "calculator",
+      "title": "Máy tính",
+      "icon": "plusminus.circle.fill",
+      "color": "#f97316",
+      "enabled": true,
+      "dock": false
+    },
+    {
+      "id": "notes",
+      "title": "Ghi chú",
+      "icon": "note.text",
+      "color": "#eab308",
+      "enabled": true,
+      "dock": false
+    },
+    {
+      "id": "weather",
+      "title": "Thời tiết",
+      "icon": "cloud.sun.fill",
+      "color": "#06b6d4",
+      "enabled": true,
+      "dock": false
+    },
+    {
+      "id": "music",
+      "title": "Nhạc",
+      "icon": "music.note",
+      "color": "#ec4899",
+      "enabled": true,
+      "dock": false
+    },
+    {
+      "id": "calendar",
+      "title": "Lịch",
+      "icon": "calendar",
+      "color": "#6366f1",
+      "enabled": true,
+      "dock": false
+    },
+    {
+      "id": "update",
+      "title": "Cập nhật",
+      "icon": "arrow.triangle.2.circlepath",
+      "color": "#0ea5e9",
+      "enabled": true,
+      "dock": false
+    }
+  ]
+}

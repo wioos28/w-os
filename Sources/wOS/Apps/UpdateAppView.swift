@@ -16,13 +16,15 @@ struct UpdateAppView: View {
                 .padding(.top, 30)
 
             VStack(spacing: 4) {
-                Text("W OS 2.1.0").font(.system(size: 20, weight: .bold)).foregroundColor(.white)
+                Text("W OS \(versionString)").font(.system(size: 20, weight: .bold)).foregroundColor(.white)
                 Text("Swift Native Build").font(.system(size: 13)).foregroundColor(Color(hex: "888888"))
             }
 
             VStack(alignment: .leading, spacing: 10) {
                 infoRow("Kiến trúc", "SwiftUI / iOS Native")
                 infoRow("Boot Drive", systemState.bootDriveMode.label)
+                infoRow("Danh sách app", SystemAppsData.catalogLoaded ? "v\(SystemAppsData.catalogVersion)" : "Mặc định")
+                infoRow("Số app", "\(SystemAppsData.list.count) ứng dụng")
                 if let lastChecked {
                     infoRow("Kiểm tra lần cuối", formatted(lastChecked))
                 }
@@ -72,8 +74,16 @@ struct UpdateAppView: View {
         }
     }
 
+    private var versionString: String {
+        if SystemAppsData.catalogLoaded {
+            return SystemAppsData.catalogVersion
+        }
+        return "2.2.0"
+    }
+
     private func checkForUpdate() {
         checking = true
+        systemState.refreshAppCatalog()
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
             checking = false
             upToDate = true

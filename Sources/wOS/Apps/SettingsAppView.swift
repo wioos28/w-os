@@ -68,6 +68,10 @@ struct SettingsAppView: View {
 
                 sectionTitle("Chung")
                 settingRow(icon: "arrow.triangle.2.circlepath", title: "Cập nhật phần mềm") {}
+                settingRow(icon: "arrow.clockwise", title: "Làm mới danh sách app", value: catalogInfo) {
+                    systemState.refreshAppCatalog()
+                    haptic.impactOccurred()
+                }
                 settingRow(icon: "moon.fill", title: "Chế độ tối", value: darkMode ? "Bật" : "Tắt") { darkMode.toggle() }
                 settingRow(icon: "gearshape.fill", title: "Mở Cài đặt hệ thống thật") { LinkingService.openSystemSettings() }
 
@@ -298,6 +302,13 @@ struct SettingsAppView: View {
     }
 
     // MARK: - Helpers
+
+    private var catalogInfo: String {
+        if SystemAppsData.catalogLoaded {
+            return "v\(SystemAppsData.catalogVersion)"
+        }
+        return "Mặc định"
+    }
 
     private var avatarLetter: String {
         let n = systemState.userName

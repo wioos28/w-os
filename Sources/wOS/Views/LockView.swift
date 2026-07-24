@@ -211,12 +211,14 @@ struct LockView: View {
 
         haptic.impactOccurred()
 
+        let currentIndex = pin.count
+
         withAnimation(.spring(response: 0.25, dampingFraction: 0.4)) {
-            dotScales[pin.count] = 1.4
+            dotScales[currentIndex] = 1.4
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
-                dotScales[pin.count] = 1.0
+                dotScales[currentIndex] = 1.0
             }
         }
 

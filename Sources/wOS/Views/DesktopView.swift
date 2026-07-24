@@ -12,15 +12,17 @@ struct DesktopView: View {
     var body: some View {
         GeometryReader { geo in
             let isLandscape = geo.size.width > geo.size.height
-            let columns = isLandscape
-                ? [GridItem(.adaptive(minimum: 80, maximum: 100), spacing: 24)]
+            let fixedColumns = isLandscape
+                ? [GridItem(.fixed(90), spacing: 24),
+                   GridItem(.fixed(90), spacing: 24),
+                   GridItem(.fixed(90), spacing: 24)]
                 : [GridItem(.adaptive(minimum: 70, maximum: 90), spacing: 18)]
 
             ZStack {
                 WallpaperBackground(wallpaperId: systemState.wallpaper)
 
                 ScrollView([.horizontal, .vertical], showsIndicators: false) {
-                    LazyVGrid(columns: columns, spacing: isLandscape ? 28 : 22) {
+                    LazyVGrid(columns: fixedColumns, spacing: isLandscape ? 28 : 22) {
                         // System apps
                         ForEach(SystemAppsData.list) { app in
                             appIconView(title: app.title, icon: app.icon, color: app.color, isReal: false, isLandscape: isLandscape)

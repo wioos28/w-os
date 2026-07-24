@@ -77,6 +77,7 @@ final class SystemState: ObservableObject {
 
     init() {
         load()
+        fetchAppCatalog()
     }
 
     // ---------------- Persistence (mirrors AsyncStorage keys 1:1) ----------------
@@ -223,5 +224,27 @@ final class SystemState: ObservableObject {
         if let data = try? JSONEncoder().encode(installedApps) {
             defaults.set(data, forKey: Keys.installedApps)
         }
+    }
+
+    // MARK: - App Catalog (from GitHub)
+
+    private func fetchAppCatalog() {
+        AppCatalogService.shared.fetchCatalog { [weak self] catalog in
+            SystemAppsData.updateFromCatalog(catalog)
+            self?.objectWillChange.send()
+        }
+    }
+
+    func refreshAppCatalog() {
+        AppCatalogService.shared.fetchCatalog { [weak self] catalog in
+            SystemAppsData.updateFromCatalog(catalog)
+            self?.objectWillChange.send()
+        }
+    }
+
+    func resetAppCatalog() {
+        AppCatalogService.shared.resetCatalog()
+        SystemAppsData.resetToDefaults()
+        objectWillChange.send()
     }
 }

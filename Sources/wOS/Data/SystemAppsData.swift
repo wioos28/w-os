@@ -1,8 +1,10 @@
 // SystemAppsData.swift
-// Ported 1:1 from src/data/systemApps.js
+// Dynamic system app catalog — loads from GitHub (apps.json), falls back to
+// built-in defaults when offline.
 import SwiftUI
 
 enum SystemAppsData {
+    // MARK: - Static defaults (used when catalog hasn't loaded yet)
     static let settings   = SystemApp(id: "settings",   title: "Cài đặt",   icon: IconRef(symbol: "gearshape.fill"),           color: Color(hex: "5b5f66"))
     static let browser    = SystemApp(id: "browser",    title: "Browser",   icon: IconRef(symbol: "globe"),                     color: Color(hex: "3b82f6"))
     static let appstore   = SystemApp(id: "appstore",   title: "Thư viện",  icon: IconRef(symbol: "bag.fill"),                  color: Color(hex: "10b981"))
@@ -15,11 +17,52 @@ enum SystemAppsData {
     static let calendar   = SystemApp(id: "calendar",   title: "Lịch",      icon: IconRef(symbol: "calendar"),                  color: Color(hex: "6366f1"))
     static let update     = SystemApp(id: "update",     title: "Cập nhật",  icon: IconRef(symbol: "arrow.triangle.2.circlepath"), color: Color(hex: "0ea5e9"))
 
-    static let list: [SystemApp] = [settings, browser, appstore, terminal, files, calculator, notes, weather, music, calendar, update]
+    // Default list (before catalog loads)
+    static let defaultList: [SystemApp] = [settings, browser, appstore, terminal, files, calculator, notes, weather, music, calendar, update]
+    static let defaultDockIds: [String] = ["settings", "browser", "appstore", "terminal", "files"]
 
-    static let dockAppIds: [String] = ["settings", "browser", "appstore", "terminal", "files"]
+    // MARK: - Dynamic catalog (updated by AppCatalogService)
+    static var dynamicList: [SystemApp] = defaultList
+    static var dynamicDockIds: [String] = defaultDockIds
+    static var catalogVersion: String = ""
+    static var catalogLoaded: Bool = false
+
+    // MARK: - Public API
+
+    static var list: [SystemApp] {
+        catalogLoaded ? dynamicList : defaultList
+    }
+
+    static var dockAppIds: [String] {
+        catalogLoaded ? dynamicDockIds : defaultDockIds
+    }
 
     static func find(_ id: String) -> SystemApp? {
         list.first(where: { $0.id == id })
+    }
+
+    // MARK: - Update from catalog
+
+    static func updateFromCatalog(_ catalog: AppCatalog) {
+        dynamicList = catalog.apps.filter { $0.enabled }.map { entry in
+            SystemApp(
+                id: entry.id,
+                title: entry.title,
+                icon: IconRef(symbol: entry.icon),
+                color: Color(hex: entry.color)
+            )
+        }
+        dynamicDockIds = catalog.apps.filter { $0.dock && $0.enabled }.map(\.id)
+        catalogVersion = catalog.version
+        catalogLoaded = true
+
+        print("[SystemAppsData] Loaded \(dynamicList.count) apps from catalog v\(catalogVersion)")
+    }
+
+    static func resetToDefaults() {
+        dynamicList = defaultList
+        dynamicDockIds = defaultDockIds
+        catalogVersion = ""
+        catalogLoaded = false
     }
 }
