@@ -1,28 +1,41 @@
 // SettingsAppView.swift
-// Ported 1:1 from src/screens/SettingsScreen.js, extended with the new
-// boot-drive section (self-build vs admin-built) the user asked for.
+// Modern settings with numeric PIN management, privacy controls, and boot drive.
 import SwiftUI
 
 struct SettingsAppView: View {
     @EnvironmentObject var systemState: SystemState
     @StateObject private var bootDrive = BootDriveService()
 
-    @State private var appSize = "medium"
     @State private var darkMode = true
     @State private var apiUrl = ""
     @State private var testing = false
     @State private var connStatus: Bool?
     @State private var repoUrl = ""
     @State private var showResetConfirm = false
-    @State private var showUpdateAlert = false
+    @State private var showChangePassword = false
+    @State private var oldPin = ""
+    @State private var newPin = ""
+    @State private var confirmPin = ""
+    @State private var pinError: String?
+    @State private var autoLockTimeout = "5 phút"
+
+    private let haptic = UIImpactFeedbackGenerator(style: .medium)
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 // Profile card
                 HStack(spacing: 12) {
-                    Circle().fill(Color.wosAccent).frame(width: 54, height: 54)
-                        .overlay(Text(avatarLetter).font(.system(size: 22, weight: .bold)).foregroundColor(.white))
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(colors: [Color.wosAccent, Color.wosAccent.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                            )
+                            .frame(width: 54, height: 54)
+                        Text(avatarLetter)
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(.white)
+                    }
                     VStack(alignment: .leading, spacing: 2) {
                         Text(systemState.userName.isEmpty ? "Người dùng" : systemState.userName)
                             .font(.system(size: 16, weight: .semibold)).foregroundColor(.white)
@@ -40,21 +53,22 @@ struct SettingsAppView: View {
                                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(systemState.wallpaper == wp.id ? Color.wosAccent : .clear, lineWidth: 2))
                             Text(wp.label).font(.system(size: 11)).foregroundColor(Color(hex: "888888"))
                         }
-                        .onTapGesture { systemState.setWallpaper(wp.id) }
+                        .onTapGesture { systemState.setWallpaper(wp.id); haptic.impactOccurred() }
                     }
                 }
 
                 sectionTitle("Hệ điều hành (Boot Drive)")
                 bootDriveCard
 
+                sectionTitle("Bảo mật")
+                securityCard
+
                 sectionTitle("Dữ liệu đám mây")
                 cloudCard
 
                 sectionTitle("Chung")
-                settingRow(icon: "arrow.triangle.2.circlepath", title: "Cập nhật phần mềm") { showUpdateAlert = true }
-                settingRow(icon: "arrow.up.left.and.arrow.down.right", title: "Kích thước ứng dụng", value: appSize) { appSize = appSize == "medium" ? "large" : "medium" }
+                settingRow(icon: "arrow.triangle.2.circlepath", title: "Cập nhật phần mềm") {}
                 settingRow(icon: "moon.fill", title: "Chế độ tối", value: darkMode ? "Bật" : "Tắt") { darkMode.toggle() }
-                settingRow(icon: "key.fill", title: "Đổi mật khẩu") {}
                 settingRow(icon: "gearshape.fill", title: "Mở Cài đặt hệ thống thật") { LinkingService.openSystemSettings() }
 
                 sectionTitle("Hệ thống")
@@ -66,51 +80,41 @@ struct SettingsAppView: View {
         }
         .background(Color.wosBackground)
         .onAppear { apiUrl = CloudSyncService.shared.baseURL }
-        .alert("Cập nhật hệ thống", isPresented: $showUpdateAlert) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("W OS đang chạy phiên bản mới nhất (2.1.0 — Swift Native).")
-        }
         .alert("Khôi phục cài đặt gốc?", isPresented: $showResetConfirm) {
             Button("Hủy", role: .cancel) {}
             Button("Khôi phục", role: .destructive) { systemState.factoryReset() }
         } message: {
             Text("Toàn bộ dữ liệu cục bộ sẽ bị xóa.")
         }
+        .sheet(isPresented: $showChangePassword) {
+            changePasswordSheet
+        }
     }
 
-    private var avatarLetter: String {
-        let n = systemState.userName
-        return n.isEmpty ? "?" : String(n.prefix(1)).uppercased()
-    }
+    // MARK: - Security Card
 
-    private var bootDriveCard: some View {
+    private var securityCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Hiện tại: \(systemState.bootDriveMode.label)")
-                .font(.system(size: 12)).foregroundColor(Color(hex: "999999"))
+            settingRow(icon: "key.fill", title: "Đổi mã PIN") { showChangePassword = true }
 
-            HStack(spacing: 8) {
-                Button("Tự Build từ Repo") {
-                    guard !repoUrl.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                    bootDrive.buildFromRepo(repoUrl) { res in
-                        if case .success(let src) = res { systemState.setBootDriveMode(.selfBuild(source: src)) }
+            HStack {
+                Text("Tự động khóa").font(.system(size: 14)).foregroundColor(.white)
+                Spacer()
+                Menu(autoLockTimeout) {
+                    ForEach(["1 phút", "5 phút", "15 phút", "30 phút", "Không bao giờ"], id: \.self) { option in
+                        Button(option) { autoLockTimeout = option }
                     }
                 }
-                .buttonStyle(WOSSmallButtonStyle())
-
-                Button("Dùng Admin Build") {
-                    bootDrive.useAdminDrive { res in
-                        if case .success = res { systemState.setBootDriveMode(.adminBuilt) }
-                    }
-                }
-                .buttonStyle(WOSSmallButtonStyle(ghost: true))
+                .font(.system(size: 12))
+                .foregroundColor(Color(hex: "888888"))
             }
 
-            TextField("", text: $repoUrl, prompt: Text("URL repo mã nguồn...").foregroundColor(Color(hex: "555555")))
-                .textFieldStyle(WOSTextFieldStyle())
-                .autocapitalization(.none)
-
-            statusLine
+            HStack {
+                Image(systemName: "lock.fill").font(.system(size: 15)).foregroundColor(Color(hex: "9ca3af")).frame(width: 22)
+                Text("Mã PIN").font(.system(size: 14)).foregroundColor(.white)
+                Spacer()
+                Text("••••••").font(.system(size: 12)).foregroundColor(Color(hex: "666666"))
+            }
         }
         .padding(14)
         .background(Color(hex: "111111"))
@@ -118,29 +122,156 @@ struct SettingsAppView: View {
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.wosBorder))
     }
 
+    // MARK: - Change Password Sheet
+
+    private var changePasswordSheet: some View {
+        NavigationView {
+            VStack(spacing: 16) {
+                Text("Đổi mã PIN")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+
+                VStack(spacing: 12) {
+                    pinField(label: "PIN hiện tại", text: $oldPin)
+                    pinField(label: "PIN mới (4-6 số)", text: $newPin)
+                    pinField(label: "Xác nhận PIN mới", text: $confirmPin)
+                }
+
+                if let pinError {
+                    Text(pinError).foregroundColor(.wosDanger).font(.system(size: 13))
+                }
+
+                Button(action: changePassword) {
+                    Text("Lưu")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.wosAccent)
+                        .cornerRadius(12)
+                }
+                .disabled(newPin.isEmpty || confirmPin.isEmpty)
+
+                Spacer()
+            }
+            .padding(20)
+            .background(Color.wosBackground.ignoresSafeArea())
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Hủy") { showChangePassword = false; oldPin = ""; newPin = ""; confirmPin = ""; pinError = nil }
+                        .foregroundColor(.wosAccent)
+                }
+            }
+        }
+    }
+
+    private func pinField(label: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label).font(.system(size: 12)).foregroundColor(Color(hex: "888888"))
+            TextField("", text: text, prompt: Text("••••••").foregroundColor(Color(hex: "555555")))
+                .textFieldStyle(WOSTextFieldStyle())
+                .keyboardType(.numberPad)
+                .onChange(of: text.wrappedValue) { newVal in
+                    text.wrappedValue = String(newVal.filter { $0.isNumber }.prefix(6))
+                }
+        }
+    }
+
+    private func changePassword() {
+        pinError = nil
+        guard oldPin == systemState.password else {
+            pinError = "PIN hiện tại không đúng"; return
+        }
+        guard newPin.count >= 4 else {
+            pinError = "PIN mới phải có ít nhất 4 số"; return
+        }
+        guard newPin == confirmPin else {
+            pinError = "PIN xác nhận không khớp"; return
+        }
+        systemState.password = newPin
+        UserDefaults.standard.set(newPin, forKey: "wos_password")
+        showChangePassword = false
+        oldPin = ""; newPin = ""; confirmPin = ""
+        haptic.impactOccurred()
+    }
+
+    // MARK: - Boot Drive Card
+
+    private var bootDriveCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Hiện tại: \(systemState.bootDriveMode.label)")
+                .font(.system(size: 12)).foregroundColor(Color(hex: "999999"))
+
+            if let info = bootDrive.driveInfo {
+                HStack(spacing: 12) {
+                    infoItem("Phiên bản", info.version)
+                    infoItem("Tác giả", info.author)
+                    infoItem("Tải về", info.downloadDate.formatted(date: .abbreviated, time: .shortened))
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button("Tải từ GitHub") {
+                    guard !repoUrl.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+                    bootDrive.downloadFromRepo(repoUrl) { res in
+                        if case .success(let info) = res { systemState.setBootDriveMode(.selfBuild(source: info.repoURL)) }
+                    }
+                }
+                .buttonStyle(WOSSmallButtonStyle())
+
+                Button("Admin Build") {
+                    bootDrive.useAdminDrive { res in
+                        if case .success = res { systemState.setBootDriveMode(.adminBuilt) }
+                    }
+                }
+                .buttonStyle(WOSSmallButtonStyle(ghost: true))
+            }
+
+            TextField("", text: $repoUrl, prompt: Text("URL repo GitHub...").foregroundColor(Color(hex: "555555")))
+                .textFieldStyle(WOSTextFieldStyle())
+                .autocapitalization(.none)
+
+            if bootDrive.status != .idle { statusLine }
+        }
+        .padding(14)
+        .background(Color(hex: "111111"))
+        .cornerRadius(14)
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.wosBorder))
+    }
+
+    private func infoItem(_ label: String, _ value: String) -> some View {
+        VStack(spacing: 2) {
+            Text(label).font(.system(size: 10)).foregroundColor(Color(hex: "666666"))
+            Text(value).font(.system(size: 11, weight: .medium)).foregroundColor(.white)
+        }
+    }
+
     @ViewBuilder
     private var statusLine: some View {
         switch bootDrive.status {
         case .idle: EmptyView()
-        case .cloning, .building:
-            HStack(spacing: 6) { ProgressView().tint(.wosAccent); Text("Đang xử lý...").foregroundColor(Color(hex: "aaaaaa")).font(.system(size: 12)) }
+        case .downloading:
+            HStack(spacing: 6) { ProgressView().tint(.wosAccent); Text("Đang tải...").foregroundColor(Color(hex: "aaaaaa")).font(.system(size: 12)) }
         case .ready:
-            HStack(spacing: 6) { Image(systemName: "checkmark.circle.fill").foregroundColor(.wosSuccess); Text("Đã cập nhật boot drive").foregroundColor(.wosSuccess).font(.system(size: 12)) }
+            HStack(spacing: 6) { Image(systemName: "checkmark.circle.fill").foregroundColor(.wosSuccess); Text("Sẵn sàng").foregroundColor(.wosSuccess).font(.system(size: 12)) }
+        case .outdated:
+            HStack(spacing: 6) { Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.wosWarning); Text("Cần cập nhật").foregroundColor(.wosWarning).font(.system(size: 12)) }
         case .failed(let msg):
             HStack(spacing: 6) { Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.wosDanger); Text(msg).foregroundColor(.wosDanger).font(.system(size: 12)) }
         }
     }
 
+    // MARK: - Cloud Card
+
     private var cloudCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Địa chỉ server (đồng bộ ghi chú & danh mục app)")
-                .font(.system(size: 11)).foregroundColor(Color(hex: "777777"))
-            TextField("", text: $apiUrl, prompt: Text("https://ten-server-cua-ban.example.com").foregroundColor(Color(hex: "555555")))
+            Text("Địa chỉ server").font(.system(size: 11)).foregroundColor(Color(hex: "777777"))
+            TextField("", text: $apiUrl, prompt: Text("https://server.example.com").foregroundColor(Color(hex: "555555")))
                 .textFieldStyle(WOSTextFieldStyle())
                 .autocapitalization(.none)
             HStack(spacing: 8) {
                 Button(action: saveApiUrl) {
-                    HStack(spacing: 6) { Image(systemName: "square.and.arrow.down.fill"); Text("Lưu & kiểm tra") }
+                    HStack(spacing: 6) { Image(systemName: "square.and.arrow.down.fill"); Text("Lưu") }
                 }
                 .buttonStyle(WOSSmallButtonStyle())
                 Button(action: testConnection) {
@@ -155,7 +286,7 @@ struct SettingsAppView: View {
                 HStack(spacing: 6) {
                     Image(systemName: connStatus ? "checkmark.icloud.fill" : "xmark.icloud.fill")
                         .foregroundColor(connStatus ? .wosSuccess : .wosDanger)
-                    Text(connStatus ? "Đã kết nối" : "Chưa kết nối được")
+                    Text(connStatus ? "Đã kết nối" : "Chưa kết nối")
                         .foregroundColor(connStatus ? .wosSuccess : .wosDanger).font(.system(size: 12, weight: .semibold))
                 }
             }
@@ -166,17 +297,17 @@ struct SettingsAppView: View {
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.wosBorder))
     }
 
-    private func saveApiUrl() {
-        CloudSyncService.shared.baseURL = apiUrl
-        testConnection()
+    // MARK: - Helpers
+
+    private var avatarLetter: String {
+        let n = systemState.userName
+        return n.isEmpty ? "?" : String(n.prefix(1)).uppercased()
     }
 
+    private func saveApiUrl() { CloudSyncService.shared.baseURL = apiUrl; testConnection() }
     private func testConnection() {
         testing = true
-        CloudSyncService.shared.checkConnection { ok in
-            testing = false
-            connStatus = ok
-        }
+        CloudSyncService.shared.checkConnection { ok in testing = false; connStatus = ok }
     }
 
     private func sectionTitle(_ text: String) -> some View {
@@ -184,7 +315,7 @@ struct SettingsAppView: View {
     }
 
     private func settingRow(icon: String, title: String, value: String? = nil, danger: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button(action: { action(); haptic.impactOccurred() }) {
             HStack {
                 Image(systemName: icon).font(.system(size: 15)).foregroundColor(danger ? .wosDanger : Color(hex: "9ca3af")).frame(width: 22)
                 Text(title).font(.system(size: 14)).foregroundColor(danger ? .wosDanger : .white)

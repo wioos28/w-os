@@ -1,12 +1,6 @@
 // SetupView.swift
-// Ported from src/screens/SetupScreen.js (steps 1-4: name / age / password /
-// wallpaper) PLUS the new post-setup boot-drive choice the user asked for:
-// step 5 lets them pick "Tự boot drive riêng (Tự Build)" or
-// "Chạy drive do Admin build"; step 6 (only for self-build) lets them enter
-// a repo URL to read source code from, or import an uploaded file, to build
-// the OS boot drive.
+// Modern setup wizard with slide transitions, numeric PIN, and progress bar.
 import SwiftUI
-import UIKit
 import UniformTypeIdentifiers
 
 struct SetupView: View {
@@ -24,54 +18,102 @@ struct SetupView: View {
     @State private var showFileImporter = false
     @State private var errorMessage: String?
     @State private var buildError: String?
+    @State private var stepDirection: Bool = true
 
     private let totalSteps = 6
+    private let haptic = UIImpactFeedbackGenerator(style: .medium)
 
     var body: some View {
         ZStack {
             WallpaperBackground(wallpaperId: selectedWallpaper, dim: 0.55)
 
-            ScrollView {
-                VStack(spacing: 20) {
-                    VStack(spacing: 4) {
-                        Text("W OS").font(.system(size: 32, weight: .bold)).foregroundColor(.white)
-                        Text("Thiết lập hệ thống").font(.system(size: 14)).foregroundColor(Color(hex: "aaaaaa"))
-                    }
-
-                    HStack(spacing: 8) {
-                        ForEach(1...totalSteps, id: \.self) { s in
-                            Circle()
-                                .fill(step >= s ? Color.wosAccent : Color.white.opacity(0.25))
-                                .frame(width: 8, height: 8)
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: 14) {
-                        stepContent
-
-                        if let errorMessage {
-                            Text(errorMessage).foregroundColor(.wosDanger).font(.system(size: 13))
-                        }
-
-                        Button(action: handleNext) {
-                            Text(step == totalSteps ? "Hoàn tất" : "Tiếp theo")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(Color.wosAccent)
-                                .cornerRadius(14)
-                        }
-                    }
-                    .padding(24)
-                    .background(Color.black.opacity(0.55))
-                    .cornerRadius(24)
-                    .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.white.opacity(0.08)))
+            VStack(spacing: 0) {
+                // Header
+                VStack(spacing: 8) {
+                    Text("W OS").font(.system(size: 36, weight: .bold)).foregroundColor(.white)
+                    Text("Thiết lập hệ thống").font(.system(size: 14)).foregroundColor(Color(hex: "aaaaaa"))
                 }
-                .padding(20)
+                .padding(.top, 60)
+
+                // Progress bar
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Color.white.opacity(0.15))
+                            .frame(height: 6)
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Color.wosAccent)
+                            .frame(width: geo.size.width * progressValue, height: 6)
+                            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: step)
+                    }
+                }
+                .frame(height: 6)
+                .padding(.horizontal, 40)
+                .padding(.top, 30)
+
+                // Step content
+                VStack(spacing: 20) {
+                    Spacer().frame(height: 20)
+
+                    stepContent
+                        .transition(.asymmetric(
+                            insertion: .move(edge: stepDirection ? .trailing : .leading).combined(with: .opacity),
+                            removal: .move(edge: stepDirection ? .leading : .trailing).combined(with: .opacity)
+                        ))
+                        .id(step)
+
+                    if let errorMessage {
+                        Text(errorMessage).foregroundColor(.wosDanger).font(.system(size: 13))
+                            .transition(.opacity)
+                    }
+
+                    Button(action: handleNext) {
+                        HStack(spacing: 8) {
+                            Text(step == totalSteps ? "Hoàn tất" : "Tiếp theo")
+                            if step < totalSteps {
+                                Image(systemName: "arrow.right")
+                                    .font(.system(size: 12, weight: .bold))
+                            }
+                        }
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.wosAccent, Color.wosAccent.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(14)
+                        .shadow(color: Color.wosAccent.opacity(0.3), radius: 10, x: 0, y: 4)
+                    }
+
+                    if step > 1 {
+                        Button("Quay lại") {
+                            haptic.impactOccurred()
+                            withAnimation { stepDirection = false; step -= 1; errorMessage = nil }
+                        }
+                        .foregroundColor(Color(hex: "888888"))
+                        .font(.system(size: 14))
+                    }
+                }
+                .padding(24)
                 .frame(maxWidth: 420)
+                .background(Color.black.opacity(0.55))
+                .cornerRadius(24)
+                .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.white.opacity(0.08)))
+
+                Spacer()
             }
+            .padding(20)
         }
+        .animation(.spring(response: 0.5, dampingFraction: 0.85), value: step)
+    }
+
+    private var progressValue: CGFloat {
+        CGFloat(step) / CGFloat(totalSteps)
     }
 
     @ViewBuilder
@@ -83,8 +125,21 @@ struct SetupView: View {
         case 2:
             fieldGroup(label: "Xác minh độ tuổi", text: $age, placeholder: "Nhập tuổi...", keyboard: .numberPad)
         case 3:
-            secureFieldGroup(label: "Tạo mật khẩu", text: $password, placeholder: "Nhập mật khẩu...")
-            secureFieldGroup(label: "Xác nhận mật khẩu", text: $confirmPassword, placeholder: "Xác nhận mật khẩu...")
+            numericPinGroup(label: "Tạo mã PIN (4-6 số)", text: $password, placeholder: "Nhập PIN...")
+            numericPinGroup(label: "Xác nhận mã PIN", text: $confirmPassword, placeholder: "Nhập lại PIN...")
+            if !password.isEmpty {
+                HStack(spacing: 4) {
+                    ForEach(0..<6, id: \.self) { i in
+                        Circle()
+                            .fill(i < password.count ? Color.wosAccent : Color.white.opacity(0.2))
+                            .frame(width: 8, height: 8)
+                    }
+                    Text(passwordStrength)
+                        .font(.system(size: 11))
+                        .foregroundColor(passwordStrengthColor)
+                        .padding(.leading, 8)
+                }
+            }
         case 4:
             Text("Chọn hình nền").foregroundColor(Color(hex: "bbbbbb")).font(.system(size: 13))
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 70))], spacing: 10) {
@@ -96,7 +151,7 @@ struct SetupView: View {
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(selectedWallpaper == wp.id ? Color.wosAccent : .clear, lineWidth: 2))
                         Text(wp.label).font(.system(size: 11)).foregroundColor(Color(hex: "888888"))
                     }
-                    .onTapGesture { selectedWallpaper = wp.id }
+                    .onTapGesture { selectedWallpaper = wp.id; haptic.impactOccurred() }
                 }
             }
         case 5:
@@ -148,20 +203,35 @@ struct SetupView: View {
         return false
     }
 
+    private var passwordStrength: String {
+        if password.count < 4 { return "Quá ngắn" }
+        if password.count < 5 { return "Yếu" }
+        if password.count == 6 { return "Mạnh" }
+        return "Trung bình"
+    }
+
+    private var passwordStrengthColor: Color {
+        if password.count < 4 { return .wosDanger }
+        if password.count < 5 { return .wosWarning }
+        return .wosSuccess
+    }
+
     @ViewBuilder
     private var bootStatusRow: some View {
         switch bootDrive.status {
         case .idle: EmptyView()
-        case .cloning:
-            HStack(spacing: 6) { ProgressView().tint(.wosAccent); Text("Đang đọc mã nguồn từ repo...").foregroundColor(Color(hex: "aaaaaa")).font(.system(size: 12)) }
-        case .building:
-            HStack(spacing: 6) { ProgressView().tint(.wosAccent); Text("Đang build boot drive (\(Int(bootDrive.progress * 100))%)...").foregroundColor(Color(hex: "aaaaaa")).font(.system(size: 12)) }
+        case .downloading:
+            HStack(spacing: 6) { ProgressView().tint(.wosAccent); Text("Đang tải boot drive...").foregroundColor(Color(hex: "aaaaaa")).font(.system(size: 12)) }
         case .ready:
             HStack(spacing: 6) { Image(systemName: "checkmark.circle.fill").foregroundColor(.wosSuccess); Text("Boot drive đã sẵn sàng").foregroundColor(.wosSuccess).font(.system(size: 12)) }
+        case .outdated:
+            HStack(spacing: 6) { Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.wosWarning); Text("Boot drive cần cập nhật").foregroundColor(.wosWarning).font(.system(size: 12)) }
         case .failed(let msg):
             HStack(spacing: 6) { Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.wosDanger); Text(msg).foregroundColor(.wosDanger).font(.system(size: 12)) }
         }
     }
+
+    // MARK: - Field Groups
 
     private func fieldGroup(label: String, text: Binding<String>, placeholder: String, keyboard: UIKeyboardType = .default) -> some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -172,16 +242,20 @@ struct SetupView: View {
         }
     }
 
-    private func secureFieldGroup(label: String, text: Binding<String>, placeholder: String) -> some View {
+    private func numericPinGroup(label: String, text: Binding<String>, placeholder: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label).foregroundColor(Color(hex: "888888")).font(.system(size: 13))
-            SecureField("", text: text, prompt: Text(placeholder).foregroundColor(Color(hex: "555555")))
+            TextField("", text: text, prompt: Text(placeholder).foregroundColor(Color(hex: "555555")))
                 .textFieldStyle(WOSTextFieldStyle())
+                .keyboardType(.numberPad)
+                .onChange(of: text.wrappedValue) { newVal in
+                    text.wrappedValue = String(newVal.filter { $0.isNumber }.prefix(6))
+                }
         }
     }
 
     private func bootChoiceButton(title: String, subtitle: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button(action: { action(); haptic.impactOccurred() }) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.system(size: 14, weight: .semibold)).foregroundColor(.white)
                 Text(subtitle).font(.system(size: 11)).foregroundColor(Color(hex: "999999"))
@@ -194,12 +268,14 @@ struct SetupView: View {
         }
     }
 
+    // MARK: - Actions
+
     private func handleFileImport(_ result: Result<URL, Error>) {
         switch result {
         case .success(let url):
-            bootDrive.buildFromUploadedFile(named: url.lastPathComponent) { res in
+            bootDrive.downloadFromRepo(url.lastPathComponent) { res in
                 switch res {
-                case .success(let name): systemState.setBootDriveMode(.selfBuild(source: name)); buildError = nil
+                case .success(let info): systemState.setBootDriveMode(.selfBuild(source: info.repoURL)); buildError = nil
                 case .failure(let err): buildError = err.localizedDescription
                 }
             }
@@ -210,6 +286,9 @@ struct SetupView: View {
 
     private func handleNext() {
         errorMessage = nil
+        haptic.impactOccurred()
+        stepDirection = true
+
         switch step {
         case 1:
             guard !firstName.trimmingCharacters(in: .whitespaces).isEmpty,
@@ -223,8 +302,8 @@ struct SetupView: View {
             }
             step = 3
         case 3:
-            guard password.count >= 4 else { errorMessage = "Mật khẩu phải có ít nhất 4 ký tự"; return }
-            guard password == confirmPassword else { errorMessage = "Mật khẩu không khớp"; return }
+            guard password.count >= 4 else { errorMessage = "PIN phải có ít nhất 4 số"; return }
+            guard password == confirmPassword else { errorMessage = "PIN không khớp"; return }
             step = 4
         case 4:
             step = 5
@@ -236,16 +315,15 @@ struct SetupView: View {
         case 6:
             if isSelfBuildMode {
                 if case .selfBuild(let existingSource) = systemState.bootDriveMode, !existingSource.isEmpty {
-                    finishSetup()
-                    return
+                    finishSetup(); return
                 }
                 guard !repoUrl.trimmingCharacters(in: .whitespaces).isEmpty else {
                     errorMessage = "Vui lòng nhập URL repo hoặc tải file lên"; return
                 }
-                bootDrive.buildFromRepo(repoUrl) { res in
+                bootDrive.downloadFromRepo(repoUrl) { res in
                     switch res {
-                    case .success(let source):
-                        systemState.setBootDriveMode(.selfBuild(source: source))
+                    case .success(let info):
+                        systemState.setBootDriveMode(.selfBuild(source: info.repoURL))
                         finishSetup()
                     case .failure(let err):
                         buildError = err.localizedDescription

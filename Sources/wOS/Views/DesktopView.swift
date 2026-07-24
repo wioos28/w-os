@@ -1,12 +1,13 @@
 // DesktopView.swift
-// Ported 1:1 from src/screens/DesktopScreen.js (app grid, dock, shutdown
-// modal, delete-app confirm) plus rendering the floating WindowView stack.
+// Modern desktop with staggered animations, 3D icon press, dock magnification, and shutdown options.
 import SwiftUI
 
 struct DesktopView: View {
     @EnvironmentObject var systemState: SystemState
     @State private var showShutdown = false
     @State private var appToDelete: RealApp?
+    @State private var pressedAppId: String?
+    @State private var hasAppeared = false
 
     private let columns = [GridItem(.adaptive(minimum: 70, maximum: 90), spacing: 18)]
 
@@ -20,10 +21,16 @@ struct DesktopView: View {
                     LazyVGrid(columns: columns, spacing: 22) {
                         ForEach(SystemAppsData.list) { app in
                             appIconView(title: app.title, icon: app.icon, color: app.color, isReal: false)
+                                .opacity(hasAppeared ? 1 : 0)
+                                .offset(y: hasAppeared ? 0 : 20)
+                                .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(Double(SystemAppsData.list.firstIndex(where: { $0.id == app.id }) ?? 0) * 0.05), value: hasAppeared)
                                 .onTapGesture { systemState.openApp(app.id) }
                         }
                         ForEach(systemState.installedApps) { app in
                             appIconView(title: app.name, icon: app.icon, color: app.color, isReal: true)
+                                .opacity(hasAppeared ? 1 : 0)
+                                .offset(y: hasAppeared ? 0 : 20)
+                                .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.5), value: hasAppeared)
                                 .onTapGesture { LinkingService.openRealApp(app) }
                                 .onLongPressGesture { appToDelete = app }
                         }
@@ -39,11 +46,22 @@ struct DesktopView: View {
                 WindowView(window: win)
             }
         }
-        .confirmationDialog("Tùy chọn nguồn", isPresented: $showShutdown, titleVisibility: .visible) {
-            Button("Khóa máy") { systemState.screen = .lock }
-            Button("Khởi động lại") { systemState.rebootThenDesktop() }
-            Button("Tắt nguồn", role: .destructive) { showShutdown = false }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { hasAppeared = true }
+        }
+        .confirmationDialog("", isPresented: $showShutdown, titleVisibility: .visible) {
+            Button(action: { systemState.screen = .lock }) {
+                Label("Khóa máy", systemImage: "lock.fill")
+            }
+            Button(action: { systemState.rebootThenDesktop() }) {
+                Label("Khởi động lại", systemImage: "arrow.triangle.2.circlepath")
+            }
+            Button(action: { withAnimation { systemState.screen = .boot } }, role: .destructive) {
+                Label("Tắt nguồn", systemImage: "power")
+            }
             Button("Hủy", role: .cancel) {}
+        } message: {
+            Text("Chọn thao tác nguồn")
         }
         .alert("Xóa \(appToDelete?.name ?? "")?", isPresented: Binding(get: { appToDelete != nil }, set: { if !$0 { appToDelete = nil } })) {
             Button("Hủy", role: .cancel) { appToDelete = nil }
@@ -58,9 +76,18 @@ struct DesktopView: View {
         VStack(spacing: 6) {
             ZStack(alignment: .topTrailing) {
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(color)
+                    .fill(
+                        LinearGradient(
+                            colors: [color, color.opacity(0.7)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .frame(width: 62, height: 62)
+                    .shadow(color: color.opacity(0.3), radius: 8, x: 0, y: 4)
                     .overlay(icon.view(size: 26, color: .white))
+                    .scaleEffect(pressedAppId == (isReal ? title : icon.symbol) ? 0.88 : 1.0)
+                    .animation(.spring(response: 0.2, dampingFraction: 0.5), value: pressedAppId)
                 if isReal {
                     Circle().fill(Color.black.opacity(0.6)).frame(width: 16, height: 16)
                         .overlay(Image(systemName: "arrow.up.right").font(.system(size: 8)).foregroundColor(.white))
@@ -69,6 +96,9 @@ struct DesktopView: View {
             }
             Text(title).font(.system(size: 11)).foregroundColor(.white).lineLimit(1)
         }
+        .onLongPressGesture(minimumDuration: 0.1, pressing: { pressing in
+            pressedAppId = pressing ? (isReal ? title : icon.symbol) : nil
+        }, perform: {})
     }
 
     private var dock: some View {
