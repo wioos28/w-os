@@ -1,0 +1,36 @@
+{
+  "version": "2.2.0",
+  "buildDate": "2026-07-24",
+  "minIOSVersion": "16.0",
+  "features": [
+    "Landscape + Portrait adaptive layout",
+    "In-app browser for installed apps",
+    "Glassmorphism UI throughout",
+    "Cinematic boot animation with OS download",
+    "Modern lock screen with haptic feedback",
+    "Window management: drag, resize, maximize",
+    "12 system apps with modern styling",
+    "Dynamic wallpaper based on time of day",
+    "Multi-tab browser with bookmarks",
+    "Terminal with syntax highlighting",
+    "Calculator with haptic feedback",
+    "Weather app with gradient cards",
+    "Music player with animated album art",
+    "Calendar with month navigation",
+    "Control Center with glassmorphism",
+    "Notification Center with cards",
+    "Search with category filters",
+    "Settings with PIN management",
+    "Boot drive download from GitHub",
+    "Cloud sync service"
+  ],
+  "changelog": [
+    "Added OS download from GitHub on first launch",
+    "Added landscape layout with side dock",
+    "Added in-app WebView for installed apps",
+    "Improved all UI with glassmorphism",
+    "Added haptic feedback throughout",
+    "Fixed compilation errors for iOS 16+",
+    "Added version checking and updates"
+  ]
+}
