@@ -1,5 +1,5 @@
 // CalculatorAppView.swift
-// Ported 1:1 from src/screens/CalculatorScreen.js
+// Modern calculator with glass buttons and haptic feedback.
 import SwiftUI
 
 struct CalculatorAppView: View {
@@ -7,6 +7,8 @@ struct CalculatorAppView: View {
     @State private var previous: Double?
     @State private var op: String?
     @State private var newNumber = true
+    @State private var pressedKey: String?
+    private let haptic = UIImpactFeedbackGenerator(style: .light)
 
     private let rows: [[String]] = [
         ["C", "⌫", "%", "÷"],
@@ -18,60 +20,107 @@ struct CalculatorAppView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            VStack(alignment: .trailing, spacing: 4) {
+            // Display
+            VStack(alignment: .trailing, spacing: 8) {
                 Spacer()
+
                 if let op, let previous {
-                    Text("\(formatted(previous)) \(op)").font(.system(size: 18)).foregroundColor(Color(hex: "888888"))
+                    HStack(spacing: 8) {
+                        Text(formatted(previous))
+                        Text(op)
+                            .foregroundColor(.wosAccent)
+                    }
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(Color.wosTextMuted)
                 }
-                Text(display).font(.system(size: 52, weight: .light)).foregroundColor(.white)
-                    .lineLimit(1).minimumScaleFactor(0.4)
+
+                Text(display)
+                    .font(.system(size: 56, weight: .light, design: .rounded))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.3)
+                    .padding(.trailing, 4)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(20)
+            .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
 
-            VStack(spacing: 10) {
+            // Button grid
+            VStack(spacing: 12) {
                 ForEach(rows, id: \.self) { row in
-                    HStack(spacing: 10) {
+                    HStack(spacing: 12) {
                         ForEach(row, id: \.self) { key in
-                            button(key, wide: key == "0" && row.count == 3)
+                            calcButton(key, wide: key == "0" && row.count == 3)
                         }
                     }
                 }
             }
-            .padding(10).padding(.bottom, 16)
+            .padding(12)
+            .padding(.bottom, 20)
         }
         .background(Color.wosBackground)
     }
 
-    private func button(_ key: String, wide: Bool) -> some View {
+    // MARK: - Button
+
+    private func calcButton(_ key: String, wide: Bool) -> some View {
         Button(action: { tap(key) }) {
             Text(key)
-                .font(.system(size: 22, weight: .medium))
-                .foregroundColor(.white)
+                .font(.system(size: key == "=" ? 26 : 22, weight: .medium, design: .rounded))
+                .foregroundColor(buttonTextColor(key))
                 .frame(maxWidth: .infinity)
                 .frame(height: 64)
-                .frame(width: wide ? nil : nil)
+                .background(
+                    ZStack {
+                        if pressedKey == key {
+                            buttonColor(key).opacity(0.8)
+                        } else {
+                            buttonColor(key)
+                        }
+                    }
+                )
+                .cornerRadius(18)
+                .shadow(color: buttonShadowColor(key), radius: 8, x: 0, y: 4)
+                .scaleEffect(pressedKey == key ? 0.95 : 1.0)
+                .animation(.spring(response: 0.2, dampingFraction: 0.5), value: pressedKey)
         }
-        .background(bg(key))
-        .cornerRadius(16)
-        .overlay(isDigit(key) ? RoundedRectangle(cornerRadius: 16).stroke(Color.wosBorder) : nil)
+        .buttonStyle(.plain)
         .frame(maxWidth: wide ? .infinity : nil)
+        .onLongPressGesture(minimumDuration: 0, pressing: { pressing in
+            pressedKey = pressing ? key : nil
+        }, perform: {})
     }
 
-    private func isDigit(_ k: String) -> Bool { Int(k) != nil || k == "." }
+    // MARK: - Colors
 
-    private func bg(_ key: String) -> Color {
-        if ["÷", "×", "−", "+", "="].contains(key) { return .wosAccent }
-        if ["C", "⌫", "%"].contains(key) { return Color(hex: "374151") }
-        return Color(hex: "1a1a1a")
-        return Color(hex: "1a1a1a")
+    private func buttonColor(_ key: String) -> Color {
+        if key == "=" { return Color.wosAccent }
+        if key == "C" || key == "⌫" || key == "%" { return Color(hex: "2a2a2e") }
+        if ["÷", "×", "−", "+"].contains(key) { return Color(hex: "3b3b40") }
+        return Color(hex: "1c1c1e")
     }
+
+    private func buttonTextColor(_ key: String) -> Color {
+        if key == "=" { return .white }
+        if ["÷", "×", "−", "+"].contains(key) { return .wosAccentLight }
+        return .white
+    }
+
+    private func buttonShadowColor(_ key: String) -> Color {
+        if key == "=" { return Color.wosAccent.opacity(0.3) }
+        return Color.black.opacity(0.2)
+    }
+
+    // MARK: - Logic
 
     private func tap(_ key: String) {
+        haptic.impactOccurred()
+
         switch key {
-        case "C": display = "0"; previous = nil; op = nil; newNumber = true
-        case "⌫": display = display.count > 1 ? String(display.dropLast()) : "0"
+        case "C":
+            display = "0"; previous = nil; op = nil; newNumber = true
+        case "⌫":
+            display = display.count > 1 ? String(display.dropLast()) : "0"
         case ".":
             if !display.contains(".") { display += "." }
         case "+", "−", "×", "÷":
@@ -110,4 +159,8 @@ struct CalculatorAppView: View {
         if v == v.rounded() && abs(v) < 1e12 { return String(format: "%.0f", v) }
         return String(v).prefix(12).description
     }
+}
+
+#Preview {
+    CalculatorAppView()
 }
