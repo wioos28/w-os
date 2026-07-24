@@ -58,14 +58,14 @@ struct WindowView: View {
                     }
             )
             .onTapGesture { systemState.bringToFront(window.id) }
-            .onDoubleTapGesture {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+            .onTapGesture(count: 2) {
+                withAnimation(Animation.spring(response: 0.4, dampingFraction: 0.85)) {
                     systemState.maximizeWindow(window.id)
                 }
             }
             .zIndex(isActive ? 1000 : 100)
-            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: window.maximized)
-            .animation(.easeInOut(duration: 0.25), value: isClosing)
+            .animation(Animation.spring(response: 0.35, dampingFraction: 0.85), value: window.maximized)
+            .animation(Animation.easeInOut(duration: 0.25), value: isClosing)
         }
     }
 

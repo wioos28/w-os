@@ -100,7 +100,6 @@ final class BootDriveService: ObservableObject {
                 }
 
                 let contentLength = httpResponse?.expectedContentLength ?? 0
-                let fileName = url.lastPathComponent
 
                 self.progress = 0.5
 

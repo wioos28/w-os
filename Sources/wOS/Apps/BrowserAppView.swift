@@ -34,7 +34,7 @@ struct BrowserAppView: View {
 
             // WebView
             BrowserWebView(
-                url: currentTab.url,
+                url: currentTab.wrappedValue.url,
                 isLoading: $isLoading,
                 loadingProgress: $loadingProgress,
                 onURLChange: { url in
@@ -86,6 +86,7 @@ struct BrowserAppView: View {
 
     // MARK: - URL Bar
 
+    @ViewBuilder
     private var urlBar: some View {
         HStack(spacing: 8) {
             Button(action: { showBookmarks = true }) {

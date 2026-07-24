@@ -56,7 +56,9 @@ struct DesktopView: View {
             Button(action: { systemState.rebootThenDesktop() }) {
                 Label("Khởi động lại", systemImage: "arrow.triangle.2.circlepath")
             }
-            Button(action: { withAnimation { systemState.screen = .boot } }, role: .destructive) {
+            Button(role: .destructive) {
+                withAnimation { systemState.screen = .boot }
+            } label: {
                 Label("Tắt nguồn", systemImage: "power")
             }
             Button("Hủy", role: .cancel) {}
