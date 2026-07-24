@@ -49,6 +49,3 @@ workflows:
             CODE_SIGNING_ALLOWED=NO
     artifacts:
       - build/Products/Release-iphoneos/*.ipa
-    publishing:
-      app_store_connect:
-        auth: integration
