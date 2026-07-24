@@ -1,40 +1,6 @@
 workflows:
-  # ====================================================
-  # Workflow 1: Build Simulator (chỉ tạo .app, không có .ipa)
-  # ====================================================
-  ios-simulator-build:
-    name: iOS Simulator Build
-    max_build_duration: 60
-    environment:
-      vars:
-        XCODE_VERSION: "15.2"
-    scripts:
-      - name: Install XcodeGen
-        script: |
-          brew install xcodegen
-      - name: Generate Xcode project
-        script: |
-          xcodegen generate
-      - name: Build for Simulator
-        script: |
-          set -e
-          xcodebuild clean build \
-            -project WOS.xcodeproj \
-            -scheme WOS \
-            -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
-            -configuration Debug \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO
-    artifacts:
-      - build/Products/Debug-iphonesimulator/*.app
-
-  # ====================================================
-  # Workflow 2: Build Device + Export IPA
-  # Yêu cầu: Cấu hình signing trong Codemagic UI
-  #   Settings → Code signing → Upload certificate + profile
-  # ====================================================
-  ios-device-release:
-    name: iOS Device Release (IPA)
+  ios-release:
+    name: iOS Release (IPA)
     max_build_duration: 120
     environment:
       vars:
@@ -45,28 +11,61 @@ workflows:
       - name: Install XcodeGen
         script: |
           brew install xcodegen
+
       - name: Generate Xcode project
         script: |
           xcodegen generate
-      - name: Clean
+
+      - name: Clean build folder
         script: |
           set -e
           rm -rf build/ derived_data/
           mkdir -p build/ipa
-      - name: Archive
+
+      - name: Generate ExportOptions.plist
+        script: |
+          set -e
+          cat > ExportOptions.plist << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>development</string>
+              <key>compileBitcode</key>
+              <false/>
+              <key>thinning</key>
+              <string>&lt;none&gt;</string>
+              <key>uploadBitcode</key>
+              <false/>
+              <key>uploadSymbols</key>
+              <true/>
+              <key>signingStyle</key>
+              <string>automatic</string>
+          </dict>
+          </plist>
+          PLIST
+          echo "ExportOptions.plist created:"
+          cat ExportOptions.plist
+
+      - name: Archive for iOS Device
         script: |
           set -e
           echo "=== Step 1: Archive ==="
           xcodebuild archive \
             -project WOS.xcodeproj \
             -scheme WOS \
-            -destination 'generic/platform=iOS' \
+            -destination "generic/platform=iOS" \
             -configuration Release \
             -derivedDataPath derived_data \
             -archivePath build/WOS.xcarchive \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
             | xcpretty
           echo "=== Archive done ==="
           ls -la build/WOS.xcarchive
+
       - name: Export IPA
         script: |
           set -e
@@ -77,20 +76,24 @@ workflows:
             -exportPath build/ipa \
             | xcpretty
           echo "=== Export done ==="
-          echo "Files in build/ipa:"
-          find build/ipa -type f -name "*.ipa" -o -name "*.plist" | head -20
-      - name: Verify IPA exists
+          find build/ipa -type f
+
+      - name: Verify IPA
         script: |
           set -e
           IPA_COUNT=$(find build/ipa -name "*.ipa" 2>/dev/null | wc -l | tr -d ' ')
-          echo "Found $IPA_COUNT IPA file(s)"
-          if [ "$IPA_COUNT" -eq 0 ]; then
-            echo "WARNING: No IPA generated. Listing all files:"
-            find build/ -type f | head -50
-          else
-            echo "IPA files:"
+          echo "========================================="
+          echo "  IPA Verification: Found $IPA_COUNT IPA(s)"
+          echo "========================================="
+          if [ "$IPA_COUNT" -gt 0 ]; then
+            echo "SUCCESS - IPA files:"
             find build/ipa -name "*.ipa" -exec ls -lh {} \;
+          else
+            echo "FAILED - No IPA generated."
+            echo "Listing all output files:"
+            find build/ -type f -name "*.ipa" -o -name "*.plist" -o -name "*.log" 2>/dev/null | head -30
           fi
+
     artifacts:
       - build/ipa/**/*.ipa
       - build/ipa/**/*.plist
